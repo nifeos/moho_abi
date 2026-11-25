@@ -1,6 +1,6 @@
 [package]
 name = "moho_abi"
-version = "0.1.0"
+version = "0.1.0-pre.1"
 edition = "2024"
 rust-version = "1.88"
 description = "The system call ABI: the five system call numbers, every capability method number, the error codes and the right bits that a program and a kernel agree on"
