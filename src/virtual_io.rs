@@ -40,14 +40,14 @@ const _: () = assert!(DIRECT_MEMORY_ACCESS_REGION_BASE_PHYSICAL_ADDRESS_WORD_OFF
 /// size every offset below is laid out for. `SETUP_QUEUE` refuses 0 and anything larger with
 /// `WrongObject`.
 ///
-/// Name: provisional.
+/// *(Name provisional.)*
 #[doc(alias = "queue size")]
 pub const QUEUE_ENTRIES: u16 = 8;
 
 /// **Where a queue's descriptor table starts**, relative to that queue's ring block: 16 bytes
 /// for each of the `QUEUE_ENTRIES` descriptors.
 ///
-/// Name: provisional.
+/// *(Name provisional.)*
 #[doc(alias = "descriptor area")]
 pub const DESCRIPTOR_TABLE_OFFSET_BYTES: u64 = 0x000;
 
@@ -55,7 +55,7 @@ pub const DESCRIPTOR_TABLE_OFFSET_BYTES: u64 = 0x000;
 /// descriptor table, which is `16 * QUEUE_ENTRIES` bytes long. The ring is `6 + 2 * QUEUE_ENTRIES`
 /// bytes (flags, index, one entry per descriptor, the used event word).
 ///
-/// Name: provisional.
+/// *(Name provisional.)*
 #[doc(alias = "driver area")]
 pub const AVAILABLE_RING_OFFSET_BYTES: u64 = 0x080;
 
@@ -63,20 +63,20 @@ pub const AVAILABLE_RING_OFFSET_BYTES: u64 = 0x080;
 /// the 4-byte alignment the used ring needs. The ring is `6 + 8 * QUEUE_ENTRIES` bytes (flags,
 /// index, an 8-byte element per descriptor, the available event word).
 ///
-/// Name: provisional.
+/// *(Name provisional.)*
 #[doc(alias = "device area")]
 pub const USED_RING_OFFSET_BYTES: u64 = 0x100;
 
 /// **Where a queue's rings end**, relative to its ring block: the first byte past the used ring.
 /// A driver's buffers for that queue start at or above it.
 ///
-/// Name: provisional.
+/// *(Name provisional.)*
 pub const RINGS_END_OFFSET_BYTES: u64 = USED_RING_OFFSET_BYTES + 6 + 8 * QUEUE_ENTRIES as u64;
 
 /// **The stride between successive queues' ring blocks** in the driver's DMA region: queue `q`'s
 /// rings are at `q * RING_BLOCK_BYTES` plus the offsets above.
 ///
-/// Name: provisional.
+/// *(Name provisional.)*
 pub const RING_BLOCK_BYTES: u64 = 0x200;
 
 // The layout follows from the queue size and the ring alignments the virtio specification
