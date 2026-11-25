@@ -20,7 +20,8 @@
 //!
 //! A module that writes `x3` or `x4` means word 3 or word 4 of this table on the architecture the
 //! reader is on.
-
+//!
+#![doc = include_str!("../docs/trap-and-program-start.md")]
 #![no_std]
 
 // Index exception (2026-11-08): the README's examples compile as doctests from the crate root, where
