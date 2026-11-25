@@ -306,6 +306,9 @@ pub mod system_call;
 pub enum Error {
     /// **The slot is empty.** Not "permission denied": there is nothing there, and there is no
     /// way to name the thing you wanted. This is what no-ambient-authority *feels like*.
+    ///
+    /// A capability to a thread that has been reaped answers this as well, not [`Error::Gone`]:
+    /// once the thread is reaped, nothing is left to name it.
     NoSuchSlot = -1,
 
     /// The capability is real, but it is not that kind of object.
@@ -357,6 +360,11 @@ pub enum Error {
     /// **The capability names an object that no longer exists**: the slot is not empty, but the thing it named was destroyed, its region
     /// reclaimed or the endpoint revoked while a thread was blocked inside an IPC on it. Nothing
     /// happened.
+    ///
+    /// A thread that has exited or died answers `Gone` only until it is reaped: a supervised corpse
+    /// waits for [`rendezvous::REAP`], and an unsupervised thread waits for the reaper to free it.
+    /// A thread doomed by its region's `DESTROY` answers `Gone` the same way. Once the thread is
+    /// reaped, the same capability answers [`Error::NoSuchSlot`].
     ///
     /// Distinct from [`Error::NoSuchSlot`] because a writer branches on the two in opposite
     /// directions: a program never granted a stdout prints into the void, and one whose reader has

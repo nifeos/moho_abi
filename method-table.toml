@@ -769,7 +769,8 @@ registers. Needs `WRITE`: the TCB capability is the whole authority.
 - **Stopped when it returns**, even when the thread was running on another core.
 - A thread blocked in IPC stays in it, and stops before its next user instruction once it ends.
 - A thread may suspend itself; the call returns 0 once somebody resumes it. Suspending a
-  suspended thread is 0; an embryo is `WrongObject`, an exited or dead thread `Gone`.
+  suspended thread is 0; an embryo is `WrongObject`. A thread that has exited, died or been doomed
+  by a `DESTROY`, and is not yet reaped, is `Gone`; once it is reaped, the capability is `NoSuchSlot`.
 '''
 
 [[method]]
@@ -786,7 +787,8 @@ thread run on from where it stopped**: the saved program counter, every register
 Needs `WRITE`.
 
 Resuming a thread that is not suspended is 0 and changes nothing. An embryo is `WrongObject`; a thread that
-has exited or died is `Gone`.
+has exited, died or been doomed by a `DESTROY`, and is not yet reaped, is `Gone`; once it is reaped, the
+capability is `NoSuchSlot`.
 '''
 
 [[method]]
