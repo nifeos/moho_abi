@@ -142,7 +142,7 @@ plain `RECEIVE` never does): a [`SEND_CAPABILITY`]'s is dropped and a [`CALL`] g
 object = "rendezvous"
 name = "SEND_CAPABILITY"
 number = 2
-rights = ["WRITE", "GRANT"]
+rights = ["WRITE"]
 refusals = ["NoSuchSlot", "NotPermitted", "Gone"]
 arguments = [
     { name = "capability_slot", bits = "u64::MAX" },
@@ -313,7 +313,7 @@ consume this capability (a second use is [`crate::Error::NoSuchSlot`]).
 object = "reply"
 name = "REPLY_CAPABILITY"
 number = 1
-rights = ["WRITE", "GRANT"]
+rights = ["WRITE"]
 refusals = ["NoSuchSlot", "NotPermitted"]
 arguments = [
     { name = "reply_0", bits = "u64::MAX" },
@@ -337,8 +337,8 @@ object = "memory_region"
 name = "MAP"
 number = 0
 blank_line_before = false
-rights = []
-refusals = ["OutOfMemory", "NotPermitted", "BadPointer"]
+rights = ["WRITE"]
+refusals = ["OutOfMemory", "BadPointer"]
 arguments = [
     { name = "virtual_address", bits = "u64::MAX" },
 ]
@@ -354,8 +354,8 @@ exhausted (the *process* is out of budget, not the kernel).
 object = "memory_region"
 name = "RETYPE"
 number = 1
-rights = []
-refusals = ["OutOfMemory", "NotPermitted"]
+rights = ["WRITE"]
+refusals = ["OutOfMemory"]
 arguments = [
     { name = "pages", bits = "u64::MAX" },
 ]
@@ -376,7 +376,7 @@ the run is spent, exactly as a single page always was.
 object = "memory_region"
 name = "RETYPE_OBJECT"
 number = 2
-rights = []
+rights = ["WRITE"]
 refusals = ["BadMethod", "OutOfMemory", "NoSuchSlot", "WrongObject", "NotPermitted"]
 arguments = [
     { name = "object_type", bits = "object_type::RENDEZVOUS | object_type::ADDRESS_SPACE | object_type::THREAD_CONTROL_BLOCK | object_type::NOTIFICATION | object_type::TIMER | object_type::PROCESS" },
@@ -689,7 +689,7 @@ Semantics follow the thread system calls as built.
 object = "thread_control_block"
 name = "CAPABILITY_INSERT"
 number = 1
-rights = ["WRITE", "GRANT"]
+rights = ["WRITE"]
 refusals = ["OutOfMemory", "NoSuchSlot", "WrongObject", "NotPermitted"]
 arguments = [
     { name = "capability_slot", bits = "u64::MAX" },
@@ -932,8 +932,8 @@ object = "interrupt"
 name = "WAIT"
 number = 0
 blank_line_before = false
-rights = []
-refusals = ["NotPermitted", "WrongObject"]
+rights = ["READ"]
+refusals = ["WrongObject"]
 arguments = []
 answers = ["fired"]
 doc = '''
@@ -946,8 +946,8 @@ happens in the kernel.
 object = "interrupt"
 name = "ACKNOWLEDGE"
 number = 1
-rights = []
-refusals = ["NotPermitted"]
+rights = ["READ"]
+refusals = []
 arguments = []
 answers = []
 doc = '''
@@ -960,8 +960,8 @@ object = "virtual_io"
 name = "READ_REGISTER"
 number = 0
 blank_line_before = false
-rights = []
-refusals = ["WrongObject", "NotPermitted"]
+rights = ["WRITE"]
+refusals = ["WrongObject"]
 arguments = [
     { name = "offset", bits = "u64::MAX" },
 ]
@@ -978,8 +978,8 @@ object = "virtual_io"
 name = "WRITE_REGISTER"
 number = 1
 blank_line_before = false
-rights = []
-refusals = ["WrongObject", "NotPermitted"]
+rights = ["WRITE"]
+refusals = ["WrongObject"]
 arguments = [
     { name = "offset", bits = "u64::MAX" },
     { name = "value", bits = "u64::MAX" },
@@ -996,8 +996,8 @@ object = "virtual_io"
 name = "SETUP_QUEUE"
 number = 2
 blank_line_before = false
-rights = []
-refusals = ["WrongObject", "NotPermitted"]
+rights = ["WRITE"]
+refusals = ["WrongObject"]
 arguments = [
     { name = "entries", bits = "u64::MAX" },
     { name = "queue", bits = "u64::MAX" },
@@ -1016,8 +1016,8 @@ object = "virtual_io"
 name = "NOTIFY"
 number = 3
 blank_line_before = false
-rights = []
-refusals = ["DeviceRefused", "WrongObject", "NotPermitted"]
+rights = ["WRITE"]
+refusals = ["DeviceRefused", "WrongObject"]
 arguments = [
     { name = "queue", bits = "u64::MAX" },
 ]
