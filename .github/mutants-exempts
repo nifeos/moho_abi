@@ -2,3 +2,7 @@
 #   src/lib.rs:4 # swapping the operand order is the same arithmetic
 # A line without a reason is refused, and a line naming a survivor that no longer exists is
 # refused too, so this list can only shrink by a diff that says why.
+src/address_wait.rs:17 # PRIVATE is bit 7 and WIDTH_32_BITS is bit 1, so `|` and `^` build the same flags word
+src/rights.rs:2 # `1 << 0` and `1 >> 0` are both 1, so READ keeps its bit
+src/rights.rs:22 # the five rights are distinct single bits, so each of the four `|` as `^` gives the same ALL
+src/uart.rs:52 # the shift is clamped to 9 and the width is a u8 shifted to bits 15:8, so `|` and `^` give the same word
