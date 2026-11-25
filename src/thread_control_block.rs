@@ -49,7 +49,8 @@ pub const SET_THREAD_POINTER: u64 = 3;
 /// - **Stopped when it returns**, even when the thread was running on another core.
 /// - A thread blocked in IPC stays in it, and stops before its next user instruction once it ends.
 /// - A thread may suspend itself; the call returns 0 once somebody resumes it. Suspending a
-///   suspended thread is 0; an embryo is `WrongObject`, an exited or dead thread `Gone`.
+///   suspended thread is 0; an embryo is `WrongObject`. A thread that has exited, died or been doomed
+///   by a `DESTROY`, and is not yet reaped, is `Gone`; once it is reaped, the capability is `NoSuchSlot`.
 pub const SUSPEND: u64 = 4;
 
 /// `invoke(capability, RESUME, _, _, _)` -> 0 (seL4's `TCB_Resume`). **Let a suspended
@@ -57,6 +58,7 @@ pub const SUSPEND: u64 = 4;
 /// Needs `WRITE`.
 ///
 /// Resuming a thread that is not suspended is 0 and changes nothing. An embryo is `WrongObject`; a thread that
-/// has exited or died is `Gone`.
+/// has exited, died or been doomed by a `DESTROY`, and is not yet reaped, is `Gone`; once it is reaped, the
+/// capability is `NoSuchSlot`.
 pub const RESUME: u64 = 5;
 // End of the part generated from method-table.toml.
