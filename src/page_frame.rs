@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, MAP, va, writable, memory_region_slot)` -> 0. Map this frame at `va` in the
 /// caller's own address space. `writable` != 0 maps it read/write (needs `WRITE` on the frame); `0`
 /// maps it read-only (needs `READ`). Page tables to reach `va` come from the untyped named by
@@ -28,3 +30,4 @@ pub const REVOKE: u64 = 1;
 ///   overlapping run), so a slice escapes its source's revoke, a delegation-class power.
 /// - [`crate::Error::BadPointer`] for `count` of 0 or a range past the run's end.
 pub const SLICE: u64 = 2;
+// End of the part generated from method-table.toml.

@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(reply_capability, REPLY, r0, r1, _)` -> 0. Deliver `{r0, r1}` to the caller, wake it, and
 /// consume this capability (a second use is [`crate::Error::NoSuchSlot`]).
 pub const REPLY: u64 = 0;
@@ -11,3 +13,4 @@ pub const REPLY: u64 = 0;
 ///   in `x2` and this call returns 1, as it does for a caller no longer waiting.
 /// - Every `CALL` returns `x2`, `NO_CAPABILITY` after a plain [`REPLY`].
 pub const REPLY_CAPABILITY: u64 = 1;
+// End of the part generated from method-table.toml.

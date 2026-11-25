@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, SEND, w0, w1, w2)` -> 0. **Blocks until a receiver takes the message.**
 ///
 /// The three words travel in registers and never touch memory. That is the whole of the
@@ -97,6 +99,7 @@ pub const NO_CAPABILITY: u64 = u64::MAX;
 /// Reply did not fit the table arrives with `x1 ==` [`NO_CAPABILITY`] and `x4 == 0`. **Test this, never
 /// `x1 != NO_CAPABILITY`**: a runtime wrapper tests `x4`, never `x1`, and returns a typed Reply.
 pub const REPLY_DELIVERED: u64 = 1;
+// End of the part generated from method-table.toml.
 
 // `x4` carries both tags, so they must differ from each other and from the untagged `0`.
 const _: () = assert!(

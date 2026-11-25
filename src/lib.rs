@@ -51,6 +51,8 @@ pub const ABI_VERSION: u32 = 1;
 // in its `INTERFACES` note; one line, and every consumer reads the two together.
 pub const INTERFACE_ID: u64 = 1;
 
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `exit(code)`: end the calling thread's process and every thread in it. Needs no capability,
 /// because it acts on the caller itself.
 pub const SYSTEM_CALL_EXIT: u64 = 0;
@@ -84,6 +86,7 @@ pub const SYSTEM_CALL_CAPABILITY_DELETE: u64 = 3;
 /// may free the thread's stack. An unmapped or misaligned word is skipped, never a reason not to
 /// exit. *(Number provisional.)*
 pub const SYSTEM_CALL_EXIT_THREAD: u64 = 4;
+// End of the part generated from method-table.toml.
 
 /// The number of slots in a thread's capability table, mirroring the kernel's
 /// the size of the kernel's own table, so userspace can name [`fault::FAULT_RENDEZVOUS_SLOT`] without
@@ -259,6 +262,16 @@ pub mod port_range;
 /// **How far apart the registers of the console's universal asynchronous receiver-transmitter (UART) are**. Not a capability's methods: the start word the kernel passes the progenitor,
 /// and the progenitor its console and input drivers.
 pub mod uart;
+
+/// **Every system call and method as a typed call**, and the bits each method defines in its
+/// argument words. A call is a [`Call`](system_call::Call): the number and six words to trap with,
+/// and how to read the six words the kernel answers. This crate makes no call, so a program keeps
+/// its own trap. Written, with the constants of every module above, from `method-table.toml`.
+///
+/// *(Module, type, function and mask names provisional.)*
+// Generated as one line per item; tests/method_table compares it with the table, not rustfmt.
+#[rustfmt::skip]
+pub mod system_call;
 
 // Index exception (2026-10-12): the error every child module returns stays at the root, because
 // the generator of the standard library's copy inlines only `pub mod` children, and a public `error` module would be a

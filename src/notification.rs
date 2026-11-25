@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, SIGNAL, bits, _, _)` -> 0. OR `bits` into the word, waking a waiter or the
 /// bound receiver if there is one. **Never blocks and never loses a bit.** A signal of zero
 /// bits does nothing and wakes nobody, because it has nothing to deliver. `Gone` if the
@@ -32,3 +34,4 @@ pub const BIND: u64 = 3;
 /// `x4` is written only by the kernel, and is `0` on every other receive. The fault-reply protocol that the fault rendezvous reserves `w4` for must not put this
 /// value there.
 pub const BOUND: u64 = 2;
+// End of the part generated from method-table.toml.

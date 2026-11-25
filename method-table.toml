@@ -1,0 +1,1085 @@
+# The system call surface, one entry per system call, method and named argument value.
+# tests/method_table.rs writes src/ from this file and fails when the two differ;
+# `MOHO_ABI_REGENERATE=1 cargo test --test method_table` rewrites src/.
+
+[[system_call]]
+name = "EXIT"
+number = 0
+returns = "never"
+arguments = [
+    { name = "code", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`exit(code)`: end the calling thread's process and every thread in it. Needs no capability,
+because it acts on the caller itself.
+'''
+
+[[system_call]]
+name = "YIELD"
+number = 1
+blank_line_before = false
+arguments = []
+answers = []
+doc = '''
+`yield()`: give up the CPU without blocking. Needs no capability, as `exit` needs none.
+'''
+
+[[system_call]]
+name = "INVOKE"
+number = 2
+blank_line_before = false
+wrapper = false
+arguments = [
+    { name = "capability", bits = "u64::MAX" },
+    { name = "method", bits = "u64::MAX" },
+    { name = "argument_0", bits = "u64::MAX" },
+    { name = "argument_1", bits = "u64::MAX" },
+    { name = "argument_2", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, method, a0, a1, a2)`: the one system call that acts on anything but the caller.
+
+# Examples
+```
+use moho_abi::{SYSTEM_CALL_EXIT, SYSTEM_CALL_INVOKE, SYSTEM_CALL_YIELD, rendezvous};
+
+assert_eq!([SYSTEM_CALL_EXIT, SYSTEM_CALL_YIELD, SYSTEM_CALL_INVOKE], [0, 1, 2]);
+
+// Sending on a rendezvous is a method number, not a system call number. Adding an operation to the
+// system is a new method here; adding a *system call* is a design fork.
+assert_eq!(rendezvous::SEND, 0);
+```
+'''
+
+[[system_call]]
+name = "CAPABILITY_DELETE"
+number = 3
+arguments = [
+    { name = "slot", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`capability_delete(slot)`: drop a capability from the caller's own capability table, freeing the slot.
+Deleting an empty slot is a harmless no-op. A loader that
+retypes many frames through a finite table recycles slots with it, and it needs no capability
+because the table is the caller's own.
+'''
+
+[[system_call]]
+name = "EXIT_THREAD"
+number = 4
+returns = "never"
+arguments = [
+    { name = "word", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`exit_thread(word)`: **end the calling thread, and only it**; when it is the last running
+thread of its process the process ends too, as [`SYSTEM_CALL_EXIT`] would end it. Needs no capability.
+
+`word`, if not zero, names a 32-bit word in the caller's own space: once the thread has left
+user mode for good the kernel stores zero there and wakes every address wait waiter on it, so a joiner
+may free the thread's stack. An unmapped or misaligned word is skipped, never a reason not to
+exit. *(Number provisional.)*
+'''
+
+[[method]]
+object = "rendezvous"
+name = "SEND"
+number = 0
+blank_line_before = false
+rights = ["WRITE"]
+refusals = ["NoSuchSlot", "Gone"]
+arguments = [
+    { name = "word_0", bits = "u64::MAX" },
+    { name = "word_1", bits = "u64::MAX" },
+    { name = "word_2", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, SEND, w0, w1, w2)` -> 0. **Blocks until a receiver takes the message.**
+
+The three words travel in registers and never touch memory. That is the whole of the
+fastpath, and it is the rule made real: *IPC carries control.* Bulk data will
+move later by handing over a frame capability, not by copying bytes into a message.
+
+Two refusals a sender must tell apart, and the ABI does:
+[`crate::Error::NoSuchSlot`] means the slot is empty, and [`crate::Error::Gone`] means the
+endpoint this capability names has been destroyed, including while this thread was blocked
+inside the send. A byte-sink contract can build on the difference.
+'''
+
+[[method]]
+object = "rendezvous"
+name = "RECEIVE"
+number = 1
+rights = ["READ"]
+refusals = []
+arguments = []
+answers = ["word_0", "word_1", "word_2", "badge", "tag"]
+doc = '''
+`invoke(capability, RECEIVE, _, _, _)` -> w0, with w1 in x1 and w2 in x2. **Blocks until a message
+arrives.** Only the kernel writes `x3` and `x4`: `x3` is the [`BADGE`] on the sender's capability
+(`0` unbadged), or a death's fault address from the fault rendezvous, and `x4` is `0` or
+[`notification::BOUND`](crate::notification::BOUND). **It never takes a capability** (a
+plain `RECEIVE` never does): a [`SEND_CAPABILITY`]'s is dropped and a [`CALL`] gets
+[`Gone`](crate::Error::Gone); use [`RECEIVE_CAPABILITY`] for both.
+
+# BUGS
+- **`x0` is the sender's own `w0`**, so a negative `w0` equal to an [`Error`](crate::Error) code
+  reads as that error to a wrapper that checks the sign.
+'''
+
+[[method]]
+object = "rendezvous"
+name = "SEND_CAPABILITY"
+number = 2
+rights = ["WRITE", "GRANT"]
+refusals = []
+arguments = [
+    { name = "capability_slot", bits = "u64::MAX" },
+    { name = "rights", bits = "rights::ALL" },
+    { name = "word_0", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, SEND_CAPABILITY, capability_slot, rights, w0)` -> 0. **Delegate a capability.** Passes the
+capability in the sender's `capability_slot`, narrowed to `rights` (see [`crate::rights`]), plus one
+data word, over this endpoint; blocks until a receiver takes it. The endpoint capability needs
+`WRITE` (you may send here), and the *delegated* capability needs `GRANT` (you were trusted to
+pass it on). `rights` may only narrow what the sender holds, never widen it. This is the
+operation that makes a capability system one a process can actually compose in: authority moves
+between processes at runtime instead of being wired by the kernel at spawn. Only a
+[`RECEIVE_CAPABILITY`] takes the capability: a plain [`RECEIVE`] gets the data word and the copy is
+dropped, on either arrival order.
+'''
+
+[[method]]
+object = "rendezvous"
+name = "RECEIVE_CAPABILITY"
+number = 3
+rights = ["READ"]
+refusals = []
+arguments = []
+answers = ["word_0", "capability_slot", "word_1", "badge", "tag"]
+doc = '''
+`invoke(capability, RECEIVE_CAPABILITY, _, _, _)` -> w0, with the received capability's slot in x1 (or
+[`NO_CAPABILITY`]), a second data word in x2 and the sender's [`BADGE`] in x3 (0 unbadged). **Blocks
+until a message arrives.** The kernel chooses a free slot; for a [`CALL`] it holds a one-shot
+[`crate::reply`] naming the caller. Only the kernel writes `x4`: [`REPLY_DELIVERED`] for a
+`CALL`'s Reply, `notification::BOUND` when a bound notification ended the receive, else `0`.
+`x1` is `NO_CAPABILITY` unless a capability was installed for this delivery. Needs `READ`.
+
+# BUGS
+- **A death read here loses the faulting `pc`**: supervisors receive deaths with `RECEIVE`.
+- A delegation passes the `NO_CAPABILITY` guard.
+'''
+
+[[method]]
+object = "rendezvous"
+name = "CALL"
+number = 4
+rights = ["WRITE"]
+refusals = ["Gone"]
+arguments = [
+    { name = "word_0", bits = "u64::MAX" },
+    { name = "word_1", bits = "u64::MAX" },
+]
+answers = ["reply_0", "reply_1", "capability_slot"]
+doc = '''
+`invoke(capability, CALL, w0, w1, _)` -> r0, with r1 in x1 and in x2 the slot of a capability the
+server's [`crate::reply::REPLY_CAPABILITY`] carried, or [`NO_CAPABILITY`]. **Send two words and block
+until replied.** The atomic send-and-wait a server can answer safely: at the rendezvous the
+kernel mints a one-shot [`crate::reply`] capability naming *this* caller and hands it to the
+server (through [`RECEIVE_CAPABILITY`]), so the server can answer a caller it was never wired to,
+exactly once, and only that caller. Needs `WRITE`. A `CALL` that reaches a plain [`RECEIVE`] returns
+[`Gone`](crate::Error::Gone): the receiver gets the two words, and there is nowhere to put the
+Reply.
+'''
+
+[[method]]
+object = "rendezvous"
+name = "REAP"
+number = 5
+rights = ["READ"]
+refusals = ["StillAlive", "NotSupervised", "NotPermitted"]
+arguments = [
+    { name = "thread_id", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, REAP, tid, _, _)` -> 0. **Collect a corpse this rendezvous supervises**: reclaim the TCB, space and region of the thread `tid` names.
+Needs `READ`, and the thread's recorded fault rendezvous must *be* this rendezvous.
+
+- [`crate::Error::StillAlive`]: not dead yet. Killing stays with `MemoryRegion::DESTROY`.
+- [`crate::Error::NotSupervised`]: one error for not yours, already collected, or a stale tid.
+- [`crate::Error::NotPermitted`]: the corpse's region cannot be reclaimed yet (live children).
+
+# BUGS
+- `NotPermitted` has a second, unmeasured cause.
+'''
+
+[[method]]
+object = "rendezvous"
+name = "SURVEY"
+number = 6
+rights = ["ENUMERATE"]
+refusals = ["BadMethod", "NotPermitted"]
+arguments = [
+    { name = "cursor", bits = "u64::MAX" },
+    { name = "record", bits = "survey::record::STATE | survey::record::PLACEMENT | survey::record::CPU_TIME | survey::record::PROCESS" },
+]
+answers = ["next_cursor", "thread_id", "word"]
+doc = '''
+`invoke(capability, SURVEY, cursor, record, 0)` -> `(next_cursor, tid, word)`: **read one entry of the
+domain this rendezvous supervises**, the threads whose fault
+rendezvous is this one. `record` picks the word ([`survey::record`](super::survey::record)); an
+unknown one is [`crate::Error::BadMethod`], refused before the walk.
+
+Needs [`rights::ENUMERATE`](super::rights::ENUMERATE), not `READ`: a domain names its members and
+does not act on them. Without it: `NotPermitted`, never an empty domain.
+Start at cursor 0 and feed each `next_cursor` back until [`survey::DONE`](super::survey::DONE).
+Each call is its own snapshot, never a lock held across the walk.
+'''
+
+[[method]]
+object = "rendezvous"
+name = "BADGE"
+number = 7
+rights = ["GRANT"]
+refusals = []
+arguments = [
+    { name = "badge", bits = "u64::MAX" },
+]
+answers = ["slot"]
+doc = '''
+`invoke(capability, BADGE, badge, _, _)` -> the slot of a badged copy of this endpoint capability, in
+x0 as `memory_region::RETYPE_OBJECT` answers, or a negative [`crate::Error`]. The copy names the same
+endpoint with the same rights plus `badge`, which the kernel delivers to the server when its
+holder sends here, so a server serving many clients on one endpoint tells them apart.
+
+Needs `GRANT`, a delegation-class power. Refuses a `badge` of 0 (the unbadged value) and a
+source already badged: a badge is set once (seL4's rule), so a holder can trust the one it was
+given. It rides through a later [`SEND_CAPABILITY`], because that copies the object.
+'''
+
+[[value]]
+object = "rendezvous"
+name = "NO_CAPABILITY"
+number = 0xFFFF_FFFF_FFFF_FFFF
+doc = '''
+The x1 value from [`RECEIVE_CAPABILITY`] when the message carried no capability.
+'''
+
+[[value]]
+object = "rendezvous"
+name = "REPLY_DELIVERED"
+number = 1
+doc = '''
+**The tag on a receive that delivered a `CALL`'s Reply**, so a `CALL` server can tell a Reply
+from a delegation. [`RECEIVE_CAPABILITY`] returns it in `x4` exactly when the kernel installed the one-shot
+[`crate::reply`] it minted for a [`CALL`], with `x1` its slot. Only the kernel writes `x4`: a
+delegation, a plain [`SEND`], an interrupt signal and a death leave it `0`. A `CALL` whose
+Reply did not fit the table arrives with `x1 ==` [`NO_CAPABILITY`] and `x4 == 0`. **Test this, never
+`x1 != NO_CAPABILITY`**: a runtime wrapper tests `x4`, never `x1`, and returns a typed Reply.
+'''
+
+[[method]]
+object = "reply"
+name = "REPLY"
+number = 0
+blank_line_before = false
+rights = ["WRITE"]
+refusals = ["NoSuchSlot"]
+arguments = [
+    { name = "reply_0", bits = "u64::MAX" },
+    { name = "reply_1", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(reply_capability, REPLY, r0, r1, _)` -> 0. Deliver `{r0, r1}` to the caller, wake it, and
+consume this capability (a second use is [`crate::Error::NoSuchSlot`]).
+'''
+
+[[method]]
+object = "reply"
+name = "REPLY_CAPABILITY"
+number = 1
+rights = ["WRITE", "GRANT"]
+refusals = ["NoSuchSlot", "NotPermitted"]
+arguments = [
+    { name = "reply_0", bits = "u64::MAX" },
+    { name = "reply_1", bits = "u64::MAX" },
+    { name = "capability_slot", bits = "u64::MAX" },
+]
+answers = ["copy_dropped"]
+doc = '''
+`invoke(reply, REPLY_CAPABILITY, r0, r1, capability_slot)` -> 0, or 1 when the copy did not
+reach the caller: [`REPLY`], carrying one capability (each socket is its own capability; number provisional); its `CALL` returns the copy's slot in `x2`.
+
+- **The carried capability needs `GRANT`** and keeps its rights; there is no rights mask, so a
+  server narrows first. A refused source (`NoSuchSlot`, `NotPermitted`) consumes nothing.
+- **A full table drops the copy, not the answer**: the caller gets [`super::rendezvous::NO_CAPABILITY`]
+  in `x2` and this call returns 1, as it does for a caller no longer waiting.
+- Every `CALL` returns `x2`, `NO_CAPABILITY` after a plain [`REPLY`].
+'''
+
+[[method]]
+object = "memory_region"
+name = "MAP"
+number = 0
+blank_line_before = false
+rights = []
+refusals = ["OutOfMemory"]
+arguments = [
+    { name = "virtual_address", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, MAP, va, _, _)` -> 0. Retype one page out of the untyped and map it, writable,
+at `va` in the caller's own address space. The page and any page tables it needs both come
+from the untyped; the kernel allocates nothing. Returns `OutOfMemory` when the untyped is
+exhausted (the *process* is out of budget, not the kernel).
+'''
+
+[[method]]
+object = "memory_region"
+name = "RETYPE"
+number = 1
+rights = []
+refusals = ["OutOfMemory"]
+arguments = [
+    { name = "pages", bits = "u64::MAX" },
+]
+answers = ["slot"]
+doc = '''
+`invoke(capability, RETYPE, pages, _, _)` -> slot. Retype `pages` contiguous pages out of the untyped
+into one **`PageFrame` capability** naming the run,
+and return the slot it landed in.
+`pages == 0` means one page, which is what every caller passed before the count existed
+Nothing is mapped: the caller decides where to map it, and
+may delegate it first. This is the split that makes a page a first-class, delegatable object
+rather than something mapped in one shot. `OutOfMemory` when the run does not fit, and then
+the region's budget is untouched; also when the caller's capability table is full, and then
+the run is spent, exactly as a single page always was.
+'''
+
+[[method]]
+object = "memory_region"
+name = "RETYPE_OBJECT"
+number = 2
+rights = []
+refusals = ["BadMethod", "OutOfMemory"]
+arguments = [
+    { name = "object_type", bits = "object_type::RENDEZVOUS | object_type::ADDRESS_SPACE | object_type::THREAD_CONTROL_BLOCK | object_type::NOTIFICATION | object_type::TIMER | object_type::PROCESS" },
+    { name = "space", bits = "u64::MAX" },
+    { name = "floor", bits = "u64::MAX" },
+]
+answers = ["slot"]
+doc = '''
+`invoke(capability, RETYPE_OBJECT, object_type, space, floor)` -> slot: retype one page of the untyped into a
+**kernel object** living in it, with a full-rights
+capability at the returned slot. One object per page.
+
+`object_type` names what to make (see [`object_type`](super::object_type)). A region that has
+produced a kernel object is **pinned**: [`DESTROY`] reclaims it once the objects are torn down.
+`space` is read only for [`object_type::PROCESS`](super::object_type::PROCESS), the slot of the
+space it will hold. `floor` is the lowest slot the new capability may land in, `0` for the first
+free one; a `std` program passes the first slot past those the runtime reserves. `BadMethod` for an unknown
+`object_type`; `OutOfMemory` when the untyped, the object registry or the capability table is
+exhausted.
+'''
+
+[[method]]
+object = "memory_region"
+name = "SPLIT"
+number = 3
+rights = ["WRITE"]
+refusals = ["OutOfMemory", "NotPermitted"]
+arguments = [
+    { name = "pages", bits = "u64::MAX" },
+]
+answers = ["slot"]
+doc = '''
+`invoke(capability, SPLIT, pages, _, _)` -> slot. Carve `pages` off this untyped's unspent budget into
+a **new child untyped**, and return the slot holding a full-rights capability to it. seL4's
+untyped-retype-into-untyped: a spawner splits a child its own region so it can be reclaimed
+independently. This untyped is then marked as having children and can no longer be `DESTROY`ed
+(its pages are committed; the child frees them at its own `DESTROY`). `OutOfMemory` when the
+budget or region table is exhausted or the capability table is full; `NotPermitted` without
+`WRITE`.
+'''
+
+[[method]]
+object = "memory_region"
+name = "DESTROY"
+number = 4
+rights = ["WRITE"]
+refusals = ["NotPermitted"]
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, DESTROY, _, _, _)` -> 0. **Reclaim this region and every object retyped from
+it** (object revocation, the region-owner's half). The objects are torn down and their pages
+returned; every capability to them goes stale on next use (generational names, no derivation
+tree to walk). `NotPermitted` while a live thread still occupies the region, or if it has
+been `SPLIT` into children (destroy the children first), or without `WRITE`.
+'''
+
+[[method]]
+object = "memory_region"
+name = "USAGE"
+number = 5
+rights = ["ENUMERATE"]
+refusals = ["BadMethod", "Gone"]
+arguments = [
+    { name = "record", bits = "usage::SIZE_PAGES | usage::COMMITTED | usage::FRAMES | usage::RENDEZVOUS | usage::ADDRESS_SPACES | usage::THREADS | usage::CHILDREN" },
+]
+answers = ["pages"]
+doc = '''
+`invoke(capability, USAGE, record, _, _)` -> pages: **how much of this region has been spent, and on
+what**, for a `record` from [`usage`](super::usage) . Needs `ENUMERATE` alone, the right a lister of mappings needs. `BadMethod` for an unknown
+record, checked first; [`crate::Error::Gone`] for a region already reclaimed.
+
+# BUGS
+- **A subtree record walks the whole region table under the region lock, interrupts masked**:
+  up to 62 µs a call, repeatable by any `ENUMERATE` holder; accepted.
+'''
+
+[[method]]
+object = "page_frame"
+name = "MAP"
+number = 0
+blank_line_before = false
+rights = ["READ", "WRITE"]
+refusals = ["BadPointer", "OutOfMemory", "NotPermitted"]
+arguments = [
+    { name = "virtual_address", bits = "u64::MAX" },
+    { name = "writable", bits = "1", type = "bool" },
+    { name = "memory_region_slot", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, MAP, va, writable, memory_region_slot)` -> 0. Map this frame at `va` in the
+caller's own address space. `writable` != 0 maps it read/write (needs `WRITE` on the frame); `0`
+maps it read-only (needs `READ`). Page tables to reach `va` come from the untyped named by
+`memory_region_slot`, so the kernel allocates nothing. `BadPointer` for a misaligned or high
+`va`, `OutOfMemory` when that untyped is exhausted, and `NotPermitted` for a writable mapping of
+a page this space already maps as code (W^X: no page is writable through one mapping and
+executable through another in one address space).
+
+The tables belong to that untyped, so its `DESTROY` cuts them out of this address space,
+and every page mapped beneath them stops translating, this frame's included. A mapping
+meant to outlive the untyped needs its tables from a region that lives as long.
+'''
+
+[[method]]
+object = "page_frame"
+name = "REVOKE"
+number = 1
+rights = ["GRANT"]
+refusals = []
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, REVOKE, _, _, _)` -> 0. **Un-share this page**: unmap it from every address space
+and delete every capability to it, the caller's own included. Needs `GRANT`: a holder trusted to lend the frame may
+take it back. It does **not** reclaim the page; a region's `DESTROY` does.
+
+**On a device capability it means take-back** (a device is revoked by taking it back): every `DeviceFrame` capability to the page goes and it is unmapped
+everywhere **except the caller's own**, so only the asker still reaches the registers. A device
+capability is minted once, at boot, so a symmetric revoke would strand the device.
+'''
+
+[[method]]
+object = "page_frame"
+name = "SLICE"
+number = 2
+rights = ["GRANT"]
+refusals = ["BadPointer"]
+arguments = [
+    { name = "first", bits = "u64::MAX" },
+    { name = "count", bits = "u64::MAX" },
+]
+answers = ["slot"]
+doc = '''
+`invoke(capability, SLICE, first, count, _)` -> the slot of a new capability in x0, or a negative
+[`crate::Error`]. **Derive a capability naming a sub-run of this one**: `count` pages starting `first` pages in, with this capability's rights, so a
+pool's holder hands a client exactly its window, as a run-naming Frame foresaw.
+
+- Needs `GRANT`: a revoke is scoped to the exact run (what `PageFrame::REVOKE` owes an
+  overlapping run), so a slice escapes its source's revoke, a delegation-class power.
+- [`crate::Error::BadPointer`] for `count` of 0 or a range past the run's end.
+'''
+
+[[method]]
+object = "address_space"
+name = "MAP_INTO"
+number = 0
+blank_line_before = false
+rights = ["WRITE"]
+refusals = ["OutOfMemory", "NotPermitted"]
+arguments = [
+    { name = "virtual_address", bits = "u64::MAX" },
+    { name = "frame_slot", bits = "u64::MAX" },
+    { name = "mode", bits = "MAP_READ_ONLY | MAP_READ_WRITE | MAP_CODE" },
+]
+answers = []
+doc = '''
+`invoke(capability, MAP_INTO, va, frame_slot, writable)` -> 0. Map the frame in `frame_slot` into THIS
+address space at `va`, read-only or read/write. Needs `WRITE` on the address-space capability;
+the frame capability needs `READ` for a read-only mapping, `WRITE` for a writable one, the
+[`page_frame::MAP`](super::page_frame::MAP) rule verbatim. Page tables and the revocation record are paid from the space's own
+backing region; a mapping whose record cannot be afforded is refused (`OutOfMemory`), never left
+invisible to revocation. A `MAP_READ_WRITE` of a page the space already maps as code, or a `MAP_CODE` of
+one it already maps writable, is refused with `NotPermitted`: no page is writable through one
+mapping and executable through another in one address space (W^X). The same frame
+writable in one space and code in another maps.
+'''
+
+[[value]]
+object = "address_space"
+name = "MAP_READ_ONLY"
+number = 0
+doc = '''
+`MAP_INTO`'s third argument: how to map the frame. Read-only, read/write, or executable
+code. Code is W^X: mapped read and execute,
+never writable, and the kernel makes the I-cache coherent with the loader's data writes.
+'''
+
+[[value]]
+object = "address_space"
+name = "MAP_READ_WRITE"
+number = 1
+blank_line_before = false
+doc = '''
+Map read/write.
+'''
+
+[[value]]
+object = "address_space"
+name = "MAP_CODE"
+number = 2
+blank_line_before = false
+doc = '''
+Map executable code: readable and executable, never writable (W^X).
+'''
+
+[[method]]
+object = "address_space"
+name = "LIST"
+number = 1
+rights = ["ENUMERATE"]
+refusals = ["BadPointer"]
+arguments = [
+    { name = "cursor", bits = "u64::MAX" },
+]
+answers = ["next_cursor", "virtual_address", "kind"]
+doc = '''
+`invoke(capability, LIST, cursor, 0, 0) -> (next_cursor, va, kind)` : list this space's
+mappings one entry per call, changing none, with `Rendezvous::SURVEY`'s cursors and right.
+
+- `next_cursor` returns in x0 (a0 on RISC-V), `va` in x1 and `kind` in x2, one of [`MAP_READ_ONLY`],
+  [`MAP_READ_WRITE`] or [`MAP_CODE`]. A `DeviceFrame` mapping reads as `MAP_READ_WRITE`.
+- Start with `cursor = 0` and feed each `next_cursor` back; `moho_abi::survey::DONE` means finished.
+  A cursor this space's log never minted is [`crate::Error::BadPointer`], and any other negative first word is an [`crate::Error`].
+- Needs [`rights::ENUMERATE`](super::rights::ENUMERATE), not `WRITE`.
+'''
+
+[[method]]
+object = "address_space"
+name = "UNMAP"
+number = 2
+rights = ["WRITE"]
+refusals = ["BadPointer"]
+arguments = [
+    { name = "virtual_address", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, UNMAP, va, _, _)` -> 0. **This space gives up the one page it maps
+at `va`, and no other holder is touched.** Needs `WRITE`, the authority [`MAP_INTO`] takes.
+
+- One page per call; unmapping one page of a run leaves the rest mapped.
+- A `va` with nothing mapped, misaligned or in the kernel half is [`crate::Error::BadPointer`]
+  and changes nothing. Not idempotent, deliberately. No capability is consumed or changed.
+- The page is gone from every core's translation lookaside buffer (TLB) and from the mapping record before this returns.
+- It reaches a running space: the capability keeps naming a space after a thread runs in it.
+'''
+
+[[method]]
+object = "address_space"
+name = "WAIT"
+number = 3
+rights = ["READ"]
+refusals = ["BadMethod", "WrongObject", "NotPermitted", "BadPointer", "Gone"]
+arguments = [
+    { name = "virtual_address", bits = "u64::MAX" },
+    { name = "flags", bits = "address_wait::PRIVATE | address_wait::WIDTH_MASK" },
+    { name = "expected", bits = "0xFFFF_FFFF" },
+]
+answers = ["mismatched"]
+doc = '''
+`invoke(capability, WAIT, va, flags, expected)` -> `0` woken, `1` the word did not hold `expected`
+**Address wait: park the calling
+thread on the word at `va` in its own space if it still holds `expected`**, checked and parked
+as one step against [`WAKE`]. Semantics follow the thread system calls as built.
+
+- `flags` is [`super::address_wait::PRIVATE`] `|` [`super::address_wait::WIDTH_32_BITS`], or else `BadMethod`.
+- The capability must name the caller's own space (`WrongObject`) with `READ` (`NotPermitted`).
+- `va` must be 4-aligned, in the user half and mapped readable, else `BadPointer`.
+- `Gone` if ended without a wake. A `0` may be spurious, so a caller re-checks its word. No
+  timeout yet. *(Name and number provisional.)*
+'''
+
+[[method]]
+object = "address_space"
+name = "WAKE"
+number = 4
+rights = ["READ"]
+refusals = ["BadMethod", "WrongObject", "NotPermitted", "BadPointer"]
+arguments = [
+    { name = "virtual_address", bits = "u64::MAX" },
+    { name = "flags", bits = "address_wait::PRIVATE | address_wait::WIDTH_MASK" },
+    { name = "count", bits = "u64::MAX" },
+]
+answers = ["woken"]
+doc = '''
+`invoke(capability, WAKE, va, flags, count)` -> the number of threads woken. **Address wait wake: release up to `count` threads parked
+by [`WAIT`] on the word at `va` in the caller's own space**, oldest first. `u64::MAX` wakes all.
+Refuses what [`WAIT`] refuses, except that the word need not be mapped: a wake reads no memory.
+*(Name and number provisional.)*
+'''
+
+[[method]]
+object = "thread_control_block"
+name = "CONFIGURE"
+number = 0
+blank_line_before = false
+rights = ["WRITE"]
+refusals = ["WrongObject", "OutOfMemory", "BadPointer"]
+arguments = [
+    { name = "entry", bits = "u64::MAX" },
+    { name = "user_stack_pointer", bits = "u64::MAX" },
+    { name = "address_space_slot", bits = "u64::MAX" },
+    { name = "thread_pointer", bits = "u64::MAX" },
+]
+answers = ["current_cpu_page"]
+doc = '''
+`invoke(capability, CONFIGURE, entry, user_sp, address_space_slot)` -> the thread's current-CPU page
+address, never negative (zero if none could be given). Bind the space in `address_space_slot`
+and set the EL0 entry and user stack of an embryo TCB. Needs `WRITE` on both capabilities.
+Semantics follow the thread system calls as built.
+
+- **The capability is consumed; the space's name is not**. A space that already has a holder is refused with `WrongObject`.
+- **A process capability with [`rights::BIND`](super::rights::BIND)** instead joins that process,
+  unconsumed; `OutOfMemory` when it already has as many threads as a current-CPU page admits.
+- Word 5 (the sixth) is the first thread pointer: zero or a user address, else `BadPointer`.
+'''
+
+[[method]]
+object = "thread_control_block"
+name = "CAPABILITY_INSERT"
+number = 1
+rights = ["WRITE", "GRANT"]
+refusals = ["OutOfMemory"]
+arguments = [
+    { name = "capability_slot", bits = "u64::MAX" },
+    { name = "rights", bits = "rights::ALL" },
+    { name = "target", bits = "u64::MAX" },
+]
+answers = ["child_slot"]
+doc = '''
+`invoke(capability, CAPABILITY_INSERT, capability_slot, rights, target)` -> `child_slot`. Copy the capability in
+the caller's `capability_slot`, narrowed to `rights`, into the child's capability table, returning the slot
+it landed in. The child's whole initial authority is built this way, one grant at a time,
+before it runs. Needs `WRITE` on the TCB cap and `GRANT` on the inserted capability.
+
+`target` chooses where the capability lands: **0 places it in the first free slot** (the
+original behavior, so every existing caller is unchanged), and `n` places it in slot
+`n - 1`. The explicit target exists for the supervision rendezvous, which a supervisor puts
+in the reserved [`fault::FAULT_RENDEZVOUS_SLOT`](super::fault::FAULT_RENDEZVOUS_SLOT) rather than wherever
+first-free happened to fall. `OutOfMemory` if the chosen slot is occupied or out of range.
+'''
+
+[[method]]
+object = "thread_control_block"
+name = "START"
+number = 2
+rights = ["WRITE"]
+refusals = []
+arguments = [
+    { name = "argument_0", bits = "u64::MAX" },
+    { name = "argument_1", bits = "u64::MAX" },
+    { name = "argument_2", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, START, x0, x1, x2)` -> 0. Make the thread runnable: it gets a kernel stack and
+an entry context and joins the run queue. **The three arguments are the child's first
+`x0`, `x1` and `x2`** (`a0` to `a2` on RISC-V, `rdi`, `rsi` and `rdx` on `x86_64`), passed
+through unconditionally, which is how a builder hands a worker its input. A caller with nothing to pass sends
+zeros. **Refuses a half-built thread** (no bound address space, or no entry): a TCB must be
+whole before it runs. Needs `WRITE`.
+'''
+
+[[method]]
+object = "thread_control_block"
+name = "SET_THREAD_POINTER"
+number = 3
+rights = ["WRITE"]
+refusals = ["WrongObject", "BadPointer"]
+arguments = [
+    { name = "value", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, SET_THREAD_POINTER, value, _, _)` -> 0 (seL4's `SetTLSBase`). **Change the thread pointer of the thread this TCB
+names**: `TPIDR_EL0` on aarch64, `tp` on riscv64, the `FS` base on `x86_64`. Needs `WRITE`.
+
+- The target is an embryo, which takes the value when it first runs, or the caller, which takes
+  it before this returns; any other started thread is `WrongObject`.
+- `value` is zero or a user address, else `BadPointer` and nothing changes. The kernel keeps it
+  per thread; a program writing its own register is outside this contract.
+
+*(Name and number provisional.)*
+'''
+
+[[method]]
+object = "thread_control_block"
+name = "SUSPEND"
+number = 4
+rights = ["WRITE"]
+refusals = ["WrongObject", "Gone"]
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, SUSPEND, _, _, _)` -> 0 (seL4's `TCB_Suspend`). **Stop the thread this TCB names until a [`RESUME`]**, keeping its
+registers. Needs `WRITE`: the TCB capability is the whole authority.
+
+- **Silent**: nothing reaches the supervision rendezvous that reports deaths.
+- **Stopped when it returns**, even when the thread was running on another core.
+- A thread blocked in IPC stays in it, and stops before its next user instruction once it ends.
+- A thread may suspend itself; the call returns 0 once somebody resumes it. Suspending a
+  suspended thread is 0; an embryo is `WrongObject`, an exited or dead thread `Gone`.
+'''
+
+[[method]]
+object = "thread_control_block"
+name = "RESUME"
+number = 5
+rights = ["WRITE"]
+refusals = ["WrongObject", "Gone"]
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, RESUME, _, _, _)` -> 0 (seL4's `TCB_Resume`). **Let a suspended
+thread run on from where it stopped**: the saved program counter, every register as it was. Not a re-run.
+Needs `WRITE`.
+
+Resuming a thread that is not suspended is 0 and changes nothing. An embryo is `WrongObject`; a thread that
+has exited or died is `Gone`.
+'''
+
+[[method]]
+object = "process"
+name = "DESTROY"
+number = 0
+blank_line_before = false
+rights = ["WRITE"]
+refusals = ["Gone"]
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, DESTROY, _, _, _)` -> 0. **End the process and every thread in it**: the
+supervisor's kill. Needs `WRITE`. A caller that is itself a member ends with
+it and does not return, as [`SYSTEM_CALL_EXIT`](super::SYSTEM_CALL_EXIT) would. The page stays the region's
+until that region is destroyed; an ended process answers `Gone` to a join.
+'''
+
+[[method]]
+object = "notification"
+name = "SIGNAL"
+number = 0
+blank_line_before = false
+rights = ["WRITE"]
+refusals = ["Gone"]
+arguments = [
+    { name = "bits", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, SIGNAL, bits, _, _)` -> 0. OR `bits` into the word, waking a waiter or the
+bound receiver if there is one. **Never blocks and never loses a bit.** A signal of zero
+bits does nothing and wakes nobody, because it has nothing to deliver. `Gone` if the
+notification has been destroyed. Needs `WRITE`.
+'''
+
+[[method]]
+object = "notification"
+name = "WAIT"
+number = 1
+rights = ["READ"]
+refusals = ["Gone"]
+arguments = []
+answers = ["word"]
+doc = '''
+`invoke(capability, WAIT, _, _, _)` -> word. If the word is non-zero, return it and clear it;
+otherwise block until a signal arrives. **Never returns zero.** `Gone` if the notification
+is destroyed, including while this thread waits on it. Needs `READ`.
+
+The word travels in `x0`, where a negative value is an error, so a word whose top bit is set
+and whose value lands on an error code reads as that error. Callers that need the full range must
+not use a word that can land there.
+'''
+
+[[method]]
+object = "notification"
+name = "POLL"
+number = 2
+rights = ["READ"]
+refusals = []
+arguments = []
+answers = ["word"]
+doc = '''
+`invoke(capability, POLL, _, _, _)` -> word. `WAIT` without blocking: the word, cleared, and `0` if
+nothing was pending. Needs `READ`.
+'''
+
+[[method]]
+object = "notification"
+name = "BIND"
+number = 3
+rights = ["WRITE"]
+refusals = ["NotPermitted", "WrongObject", "Gone"]
+arguments = [
+    { name = "thread_control_block_slot", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, BIND, tcb_slot, _, _)` -> 0. Bind this notification to the thread named by the
+`ThreadControlBlock` capability in `tcb_slot`, embryo or running. Needs `WRITE` on both.
+`NotPermitted` if either is already bound; `WrongObject` if the slot is not a thread;
+`Gone` if either object has been destroyed. If the thread is already blocked receiving and
+the word is non-zero, the bind delivers it at once rather than leaving it for later.
+'''
+
+[[value]]
+object = "notification"
+name = "BOUND"
+number = 2
+doc = '''
+**The tag on a receive that the bound notification ended** rather than a message. A receive
+(`RECEIVE`, `RECEIVE_CAPABILITY`, `Interrupt::WAIT`) woken by the bound notification returns `(BOUND,
+word,
+0, 0, BOUND)`: this value in `x0` as specified for notification objects, the word in `x1`,
+**and this value again in `x4`, which is the one to test.** Any sender can put `BOUND` in `x0`;
+`x4` is written only by the kernel, and is `0` on every other receive. The fault-reply protocol that the fault rendezvous reserves `w4` for must not put this
+value there.
+'''
+
+[[method]]
+object = "timer"
+name = "ARM"
+number = 0
+blank_line_before = false
+rights = ["WRITE"]
+refusals = ["WrongObject", "NotPermitted"]
+arguments = [
+    { name = "deadline", bits = "u64::MAX" },
+    { name = "notification_slot", bits = "u64::MAX" },
+    { name = "bits", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, ARM, deadline, notification_slot, bits)` -> 0. Arm this timer: when the counter
+reaches `deadline`, OR `bits` into the notification named by `notification_slot`, exactly as
+a [`SIGNAL`](super::notification::SIGNAL) would. **Replaces any pending deadline**, which then
+never fires. A deadline already reached signals at once and leaves nothing armed. `bits` of
+zero is accepted and delivers nothing when it fires, as `SIGNAL(0)` does.
+
+`WrongObject` if the slot is not a notification; `NotPermitted` without `WRITE` on either.
+A notification destroyed while the timer is armed makes the expiry a no-op, not an error:
+there is nobody left to tell.
+'''
+
+[[method]]
+object = "timer"
+name = "CANCEL"
+number = 1
+rights = ["WRITE"]
+refusals = []
+arguments = []
+answers = ["was_armed"]
+doc = '''
+`invoke(capability, CANCEL, _, _, _)` -> 1 or 0. Disarm. `1` if a deadline was pending and now never
+fires; `0` if nothing was armed (never armed, already fired, or already cancelled), which
+tells the caller any signal has already been sent. Bits a timer already signaled stay in
+the notification's word: a notification never loses a bit, and a cancel does not reach into
+one.
+'''
+
+[[method]]
+object = "interrupt"
+name = "WAIT"
+number = 0
+blank_line_before = false
+rights = []
+refusals = []
+arguments = []
+answers = ["fired"]
+doc = '''
+`invoke(capability, WAIT, _, _, _)` -> 1. **Blocks until the interrupt fires.** The kernel masks
+the interrupt when it fires and hands it to us as a message; nothing device-specific
+happens in the kernel.
+'''
+
+[[method]]
+object = "interrupt"
+name = "ACKNOWLEDGE"
+number = 1
+rights = []
+refusals = []
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, ACKNOWLEDGE, _, _, _)` -> 0. Re-enable the interrupt at the generic interrupt controller (GIC), once we
+have quieted the device. Until we call this, the interrupt stays masked and cannot storm.
+'''
+
+[[method]]
+object = "virtual_io"
+name = "READ_REGISTER"
+number = 0
+blank_line_before = false
+rights = []
+refusals = ["WrongObject"]
+arguments = [
+    { name = "offset", bits = "u64::MAX" },
+]
+answers = ["value"]
+doc = '''
+`invoke(capability, READ_REGISTER, off, _, _)` -> register value. Reads are DMA-safe, so any register
+in the device's own slot; an offset outside the slot, or not word-aligned, is `WrongObject`. The
+kernel offers only modern (version 2) devices on either bus, so the `Version` register always
+reads 2 here.
+'''
+
+[[method]]
+object = "virtual_io"
+name = "WRITE_REGISTER"
+number = 1
+blank_line_before = false
+rights = []
+refusals = ["WrongObject"]
+arguments = [
+    { name = "offset", bits = "u64::MAX" },
+    { name = "value", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, WRITE_REGISTER, off, val, _)` -> 0. Only DMA-*safe* registers (status, features,
+interrupt-ack); the queue-address and notify registers are refused (they go through the
+validated paths below).
+'''
+
+[[method]]
+object = "virtual_io"
+name = "SETUP_QUEUE"
+number = 2
+blank_line_before = false
+rights = []
+refusals = ["WrongObject"]
+arguments = [
+    { name = "entries", bits = "u64::MAX" },
+    { name = "queue", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, SETUP_QUEUE, num, queue, _)` -> 0. The kernel programs the given queue's ring
+addresses to the fixed offsets of that queue's ring block in the driver's DMA region, so the
+driver never chooses them. `queue` selects the virtqueue (a virtio-net device uses receive =
+0, transmit = 1; the disk uses only queue 0, and passing 0 keeps its ABI byte-identical).
+`WrongObject` when `queue` is out of range, the block does not fit the region, or the queue was never set up.
+'''
+
+[[method]]
+object = "virtual_io"
+name = "NOTIFY"
+number = 3
+blank_line_before = false
+rights = []
+refusals = ["DeviceRefused"]
+arguments = [
+    { name = "queue", bits = "u64::MAX" },
+]
+answers = []
+doc = '''
+`invoke(capability, NOTIFY, queue, _, _)` -> 0, or `DeviceRefused` if a newly-published descriptor on
+that queue points outside the driver's DMA region. On refusal the device is NOT told to go.
+`queue` selects the virtqueue, as for `SETUP_QUEUE`; each queue keeps its own validated
+high-water mark, so receive and transmit submits never interfere.
+'''
+
+[[method]]
+object = "port_range"
+name = "REVOKE"
+number = 1
+blank_line_before = false
+rights = ["GRANT"]
+refusals = []
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, REVOKE, _, _, _)` -> 0. **Take the ports back from everyone else.** Delete every
+`PortRange` capability naming this range from every other thread's table and clear the TSS
+bitmap that granted it, so those holders fault on their next `in`/`out`, while the caller
+keeps its own. Needs `GRANT` (you were trusted to lend the ports on, so you may take them
+back), the same rule and the same asymmetry `DeviceFrame`'s take-back uses: the kernel mints
+a port capability once, at boot, so a symmetric revoke would strand the device forever.
+'''
+
+[[method]]
+object = "reboot"
+name = "REBOOT"
+number = 0
+blank_line_before = false
+returns = "refusal"
+rights = []
+refusals = ["NoResetMechanism", "ResetNotSupported", "ResetDenied", "ResetDidNotHappen"]
+arguments = []
+answers = []
+doc = '''
+`invoke(capability, REBOOT, _, _, _)`. **On success it does not return**: the kernel asks the firmware
+for a cold reset (PSCI `SYSTEM_RESET` on aarch64, the SBI's system reset (SRST) extension,
+type 1, on riscv64, and on `x86_64` the reset register that the firmware's Advanced
+Configuration and Power Interface (ACPI) tables describe, then port `0xCF9`, then the 8042). When every route was refused it
+returns the reason, one of the four `Reset…` values of [`crate::Error`], and the firmware's raw
+code is on the kernel console just before.
+
+**It syncs nothing**: a caller with a writable filesystem asks it to sync
+and waits for the reply first. A firmware that accepts the call and hangs looks the same as a
+slow reset from inside the machine.
+'''
+
+[[method]]
+object = "console"
+name = "WRITE"
+number = 0
+blank_line_before = false
+reserved = true
+rights = []
+refusals = []
+arguments = []
+answers = []
+doc = '''
+**Reserved, retired.** `invoke(capability, WRITE, ptr, len, _)` was the write method of the
+kernel's `Console` object. That object is gone, so no object type in [`crate::object_type`]
+names a console, no capability reaches one and no kernel dispatches this number. It is never
+reused for another method of a console.
+
+A program that invokes method 0 on a capability reaches that object's own method 0, not a
+console write. A method that a kernel object does not serve answers `Error::BadMethod`.
+'''
