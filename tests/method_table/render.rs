@@ -198,7 +198,7 @@ fn call(out: &mut String, indent: &str, row: &Row) {
     let answer = answer_type(row);
     let _ = writeln!(
         out,
-        "{indent}pub fn {}({}) -> {}<{answer}> {{",
+        "{indent}#[inline]\n{indent}pub fn {}({}) -> {}<{answer}> {{",
         function(row),
         parameters.join(", "),
         if row.kind == Kind::SystemCall {
@@ -258,6 +258,7 @@ pub struct Call<A> {
 
 impl<A> Call<A> {
     /// Read the six words the kernel answered this call with.
+    #[inline]
     pub fn answer(&self, words: [u64; 6]) -> A {
         (self.answer)(words)
     }
