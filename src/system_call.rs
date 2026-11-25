@@ -86,7 +86,7 @@ pub mod rendezvous {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`NoSuchSlot`](crate::Error::NoSuchSlot), [`Gone`](crate::Error::Gone).
+    /// Its own refusals: [`Gone`](crate::Error::Gone), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn send(capability: u64, word_0: u64, word_1: u64, word_2: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -106,6 +106,8 @@ pub mod rendezvous {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`READ`](crate::rights::READ).
+    ///
+    /// Its own refusals: [`Gone`](crate::Error::Gone).
     pub fn receive(capability: u64) -> super::Call<Result<[u64; 5], i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -123,6 +125,8 @@ pub mod rendezvous {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE), [`GRANT`](crate::rights::GRANT).
+    ///
+    /// Its own refusals: [`NoSuchSlot`](crate::Error::NoSuchSlot), [`NotPermitted`](crate::Error::NotPermitted), [`Gone`](crate::Error::Gone).
     pub fn send_capability(capability: u64, capability_slot: u64, rights: u64, word_0: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -142,6 +146,8 @@ pub mod rendezvous {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`READ`](crate::rights::READ).
+    ///
+    /// Its own refusals: [`Gone`](crate::Error::Gone).
     pub fn receive_capability(capability: u64) -> super::Call<Result<[u64; 5], i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -162,7 +168,7 @@ pub mod rendezvous {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`Gone`](crate::Error::Gone).
+    /// Its own refusals: [`Gone`](crate::Error::Gone), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn call(capability: u64, word_0: u64, word_1: u64) -> super::Call<Result<[u64; 3], i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -202,7 +208,7 @@ pub mod rendezvous {
     ///
     /// The rights it reads: [`ENUMERATE`](crate::rights::ENUMERATE).
     ///
-    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod), [`NotPermitted`](crate::Error::NotPermitted).
+    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod).
     pub fn survey(capability: u64, cursor: u64, record: u64) -> super::Call<Result<[u64; 3], i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -222,6 +228,8 @@ pub mod rendezvous {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`GRANT`](crate::rights::GRANT).
+    ///
+    /// Its own refusals: [`NotPermitted`](crate::Error::NotPermitted), [`OutOfMemory`](crate::Error::OutOfMemory).
     pub fn badge(capability: u64, badge: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -242,8 +250,6 @@ pub mod reply {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
-    ///
-    /// Its own refusals: [`NoSuchSlot`](crate::Error::NoSuchSlot).
     pub fn reply(capability: u64, reply_0: u64, reply_1: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -284,7 +290,7 @@ pub mod memory_region {
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
-    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory).
+    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory), [`NotPermitted`](crate::Error::NotPermitted), [`BadPointer`](crate::Error::BadPointer).
     pub fn map(capability: u64, virtual_address: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -303,7 +309,7 @@ pub mod memory_region {
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
-    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory).
+    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn retype(capability: u64, pages: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -322,7 +328,7 @@ pub mod memory_region {
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
-    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod), [`OutOfMemory`](crate::Error::OutOfMemory).
+    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod), [`OutOfMemory`](crate::Error::OutOfMemory), [`NoSuchSlot`](crate::Error::NoSuchSlot), [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn retype_object(capability: u64, object_type: u64, space: u64, floor: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -343,7 +349,7 @@ pub mod memory_region {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory), [`NotPermitted`](crate::Error::NotPermitted).
+    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory).
     pub fn split(capability: u64, pages: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -405,7 +411,7 @@ pub mod page_frame {
     ///
     /// The rights it reads: [`READ`](crate::rights::READ), [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`BadPointer`](crate::Error::BadPointer), [`OutOfMemory`](crate::Error::OutOfMemory), [`NotPermitted`](crate::Error::NotPermitted).
+    /// Its own refusals: [`BadPointer`](crate::Error::BadPointer), [`OutOfMemory`](crate::Error::OutOfMemory), [`NotPermitted`](crate::Error::NotPermitted), [`NoSuchSlot`](crate::Error::NoSuchSlot), [`WrongObject`](crate::Error::WrongObject).
     pub fn map(capability: u64, virtual_address: u64, writable: bool, memory_region_slot: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -443,7 +449,7 @@ pub mod page_frame {
     ///
     /// The rights it reads: [`GRANT`](crate::rights::GRANT).
     ///
-    /// Its own refusals: [`BadPointer`](crate::Error::BadPointer).
+    /// Its own refusals: [`BadPointer`](crate::Error::BadPointer), [`OutOfMemory`](crate::Error::OutOfMemory).
     pub fn slice(capability: u64, first: u64, count: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -465,7 +471,7 @@ pub mod address_space {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory), [`NotPermitted`](crate::Error::NotPermitted).
+    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory), [`NotPermitted`](crate::Error::NotPermitted), [`NoSuchSlot`](crate::Error::NoSuchSlot), [`WrongObject`](crate::Error::WrongObject), [`BadPointer`](crate::Error::BadPointer).
     pub fn map_into(capability: u64, virtual_address: u64, frame_slot: u64, mode: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -526,7 +532,7 @@ pub mod address_space {
     ///
     /// The rights it reads: [`READ`](crate::rights::READ).
     ///
-    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod), [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted), [`BadPointer`](crate::Error::BadPointer), [`Gone`](crate::Error::Gone).
+    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod), [`WrongObject`](crate::Error::WrongObject), [`BadPointer`](crate::Error::BadPointer), [`Gone`](crate::Error::Gone).
     pub fn wait(capability: u64, virtual_address: u64, flags: u64, expected: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -547,7 +553,7 @@ pub mod address_space {
     ///
     /// The rights it reads: [`READ`](crate::rights::READ).
     ///
-    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod), [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted), [`BadPointer`](crate::Error::BadPointer).
+    /// Its own refusals: [`BadMethod`](crate::Error::BadMethod), [`WrongObject`](crate::Error::WrongObject), [`BadPointer`](crate::Error::BadPointer).
     pub fn wake(capability: u64, virtual_address: u64, flags: u64, count: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -571,7 +577,7 @@ pub mod thread_control_block {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`OutOfMemory`](crate::Error::OutOfMemory), [`BadPointer`](crate::Error::BadPointer).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`OutOfMemory`](crate::Error::OutOfMemory), [`BadPointer`](crate::Error::BadPointer), [`NoSuchSlot`](crate::Error::NoSuchSlot), [`NotPermitted`](crate::Error::NotPermitted), [`Gone`](crate::Error::Gone).
     pub fn configure(capability: u64, entry: u64, user_stack_pointer: u64, address_space_slot: u64, thread_pointer: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -592,7 +598,7 @@ pub mod thread_control_block {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE), [`GRANT`](crate::rights::GRANT).
     ///
-    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory).
+    /// Its own refusals: [`OutOfMemory`](crate::Error::OutOfMemory), [`NoSuchSlot`](crate::Error::NoSuchSlot), [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn capability_insert(capability: u64, capability_slot: u64, rights: u64, target: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -610,6 +616,8 @@ pub mod thread_control_block {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
+    ///
+    /// Its own refusals: [`NoSuchSlot`](crate::Error::NoSuchSlot), [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted), [`OutOfMemory`](crate::Error::OutOfMemory), [`Gone`](crate::Error::Gone).
     pub fn start(capability: u64, argument_0: u64, argument_1: u64, argument_2: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -628,7 +636,7 @@ pub mod thread_control_block {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`BadPointer`](crate::Error::BadPointer).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`BadPointer`](crate::Error::BadPointer), [`NoSuchSlot`](crate::Error::NoSuchSlot).
     pub fn set_thread_pointer(capability: u64, value: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -647,7 +655,7 @@ pub mod thread_control_block {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`Gone`](crate::Error::Gone).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`Gone`](crate::Error::Gone), [`NoSuchSlot`](crate::Error::NoSuchSlot).
     pub fn suspend(capability: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -666,7 +674,7 @@ pub mod thread_control_block {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`Gone`](crate::Error::Gone).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`Gone`](crate::Error::Gone), [`NoSuchSlot`](crate::Error::NoSuchSlot).
     pub fn resume(capability: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -751,6 +759,8 @@ pub mod notification {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`READ`](crate::rights::READ).
+    ///
+    /// Its own refusals: [`Gone`](crate::Error::Gone).
     pub fn poll(capability: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -769,7 +779,7 @@ pub mod notification {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`NotPermitted`](crate::Error::NotPermitted), [`WrongObject`](crate::Error::WrongObject), [`Gone`](crate::Error::Gone).
+    /// Its own refusals: [`NotPermitted`](crate::Error::NotPermitted), [`WrongObject`](crate::Error::WrongObject), [`Gone`](crate::Error::Gone), [`NoSuchSlot`](crate::Error::NoSuchSlot).
     pub fn bind(capability: u64, thread_control_block_slot: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -791,7 +801,7 @@ pub mod timer {
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted), [`NoSuchSlot`](crate::Error::NoSuchSlot), [`Gone`](crate::Error::Gone).
     pub fn arm(capability: u64, deadline: u64, notification_slot: u64, bits: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -811,6 +821,8 @@ pub mod timer {
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
     /// The rights it reads: [`WRITE`](crate::rights::WRITE).
+    ///
+    /// Its own refusals: [`Gone`](crate::Error::Gone).
     pub fn cancel(capability: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -831,6 +843,8 @@ pub mod interrupt {
     /// It answers `fired` (word 0).
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
+    ///
+    /// Its own refusals: [`NotPermitted`](crate::Error::NotPermitted), [`WrongObject`](crate::Error::WrongObject).
     pub fn wait(capability: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -846,6 +860,8 @@ pub mod interrupt {
     /// The call [`ACKNOWLEDGE`](crate::interrupt::ACKNOWLEDGE) makes, and how its answer reads.
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
+    ///
+    /// Its own refusals: [`NotPermitted`](crate::Error::NotPermitted).
     pub fn acknowledge(capability: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -867,7 +883,7 @@ pub mod virtual_io {
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn read_register(capability: u64, offset: u64) -> super::Call<Result<u64, i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -884,7 +900,7 @@ pub mod virtual_io {
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn write_register(capability: u64, offset: u64, value: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -901,7 +917,7 @@ pub mod virtual_io {
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
-    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject).
+    /// Its own refusals: [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn setup_queue(capability: u64, entries: u64, queue: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
@@ -918,7 +934,7 @@ pub mod virtual_io {
     ///
     /// A refusal is the negative word 0, an [`Error`](crate::Error) code.
     ///
-    /// Its own refusals: [`DeviceRefused`](crate::Error::DeviceRefused).
+    /// Its own refusals: [`DeviceRefused`](crate::Error::DeviceRefused), [`WrongObject`](crate::Error::WrongObject), [`NotPermitted`](crate::Error::NotPermitted).
     pub fn notify(capability: u64, queue: u64) -> super::Call<Result<(), i64>> {
         super::Call {
             number: super::super::SYSTEM_CALL_INVOKE,
