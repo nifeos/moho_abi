@@ -48,7 +48,7 @@ sides of the system call boundary.
 | `page_frame`, `address_space`, `address_wait` | map, revoke and slice; map, list, unmap, wait and wake; the address wait flags |
 | `thread_control_block`, `process`, `fault`, `survey` | threads and processes; the death message; the survey records |
 | `notification`, `timer`, `interrupt`, `cycle_counter` | doorbells, deadlines, interrupts and what a cycle read counts |
-| `virtual_io`, `uart`, `port_range`, `reboot`, `console` | device, console and machine methods (`console` holds one reserved number) |
+| `virtual_io`, `uart`, `port_range`, `reboot`, `console` | device, console and machine methods, and the ring layout a virtio queue uses (`console` holds one reserved number) |
 
 ## EXAMPLES
 
