@@ -268,6 +268,10 @@ pub mod uart;
 /// and how to read the six words the kernel answers. This crate makes no call, so a program keeps
 /// its own trap. Written, with the constants of every module above, from `method-table.toml`.
 ///
+/// A method's own refusals leave out the two every method shares: [`Error::NoSuchSlot`] when the
+/// slot it is invoked on is empty, and [`Error::NotPermitted`] when that capability lacks a right
+/// the method reads.
+///
 /// *(Module, type, function and mask names provisional.)*
 // Generated as one line per item; tests/method_table compares it with the table, not rustfmt.
 #[rustfmt::skip]

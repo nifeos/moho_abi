@@ -1,6 +1,12 @@
 # The system call surface, one entry per system call, method and named argument value.
 # tests/method_table.rs writes src/ from this file and fails when the two differ;
 # `MOHO_ABI_REGENERATE=1 cargo test --test method_table` rewrites src/.
+#
+# `refusals` is every error a method can answer except the two every method shares: `NoSuchSlot`
+# when the slot it is invoked on is empty, and `NotPermitted` when that capability lacks a right in
+# `rights`. The same error for any other cause is listed: an empty slot named in an argument word,
+# a thread or object that no longer exists, a right on another capability, or a refusal whatever
+# the rights.
 
 [[system_call]]
 name = "EXIT"
@@ -91,7 +97,7 @@ name = "SEND"
 number = 0
 blank_line_before = false
 rights = ["WRITE"]
-refusals = ["NoSuchSlot", "Gone"]
+refusals = ["Gone", "NotPermitted"]
 arguments = [
     { name = "word_0", bits = "u64::MAX" },
     { name = "word_1", bits = "u64::MAX" },
@@ -116,7 +122,7 @@ object = "rendezvous"
 name = "RECEIVE"
 number = 1
 rights = ["READ"]
-refusals = []
+refusals = ["Gone"]
 arguments = []
 answers = ["word_0", "word_1", "word_2", "badge", "tag"]
 doc = '''
@@ -137,7 +143,7 @@ object = "rendezvous"
 name = "SEND_CAPABILITY"
 number = 2
 rights = ["WRITE", "GRANT"]
-refusals = []
+refusals = ["NoSuchSlot", "NotPermitted", "Gone"]
 arguments = [
     { name = "capability_slot", bits = "u64::MAX" },
     { name = "rights", bits = "rights::ALL" },
@@ -161,7 +167,7 @@ object = "rendezvous"
 name = "RECEIVE_CAPABILITY"
 number = 3
 rights = ["READ"]
-refusals = []
+refusals = ["Gone"]
 arguments = []
 answers = ["word_0", "capability_slot", "word_1", "badge", "tag"]
 doc = '''
@@ -182,7 +188,7 @@ object = "rendezvous"
 name = "CALL"
 number = 4
 rights = ["WRITE"]
-refusals = ["Gone"]
+refusals = ["Gone", "NotPermitted"]
 arguments = [
     { name = "word_0", bits = "u64::MAX" },
     { name = "word_1", bits = "u64::MAX" },
@@ -226,7 +232,7 @@ object = "rendezvous"
 name = "SURVEY"
 number = 6
 rights = ["ENUMERATE"]
-refusals = ["BadMethod", "NotPermitted"]
+refusals = ["BadMethod"]
 arguments = [
     { name = "cursor", bits = "u64::MAX" },
     { name = "record", bits = "survey::record::STATE | survey::record::PLACEMENT | survey::record::CPU_TIME | survey::record::PROCESS" },
@@ -249,7 +255,7 @@ object = "rendezvous"
 name = "BADGE"
 number = 7
 rights = ["GRANT"]
-refusals = []
+refusals = ["NotPermitted", "OutOfMemory"]
 arguments = [
     { name = "badge", bits = "u64::MAX" },
 ]
@@ -292,7 +298,7 @@ name = "REPLY"
 number = 0
 blank_line_before = false
 rights = ["WRITE"]
-refusals = ["NoSuchSlot"]
+refusals = []
 arguments = [
     { name = "reply_0", bits = "u64::MAX" },
     { name = "reply_1", bits = "u64::MAX" },
@@ -332,7 +338,7 @@ name = "MAP"
 number = 0
 blank_line_before = false
 rights = []
-refusals = ["OutOfMemory"]
+refusals = ["OutOfMemory", "NotPermitted", "BadPointer"]
 arguments = [
     { name = "virtual_address", bits = "u64::MAX" },
 ]
@@ -349,7 +355,7 @@ object = "memory_region"
 name = "RETYPE"
 number = 1
 rights = []
-refusals = ["OutOfMemory"]
+refusals = ["OutOfMemory", "NotPermitted"]
 arguments = [
     { name = "pages", bits = "u64::MAX" },
 ]
@@ -371,7 +377,7 @@ object = "memory_region"
 name = "RETYPE_OBJECT"
 number = 2
 rights = []
-refusals = ["BadMethod", "OutOfMemory"]
+refusals = ["BadMethod", "OutOfMemory", "NoSuchSlot", "WrongObject", "NotPermitted"]
 arguments = [
     { name = "object_type", bits = "object_type::RENDEZVOUS | object_type::ADDRESS_SPACE | object_type::THREAD_CONTROL_BLOCK | object_type::NOTIFICATION | object_type::TIMER | object_type::PROCESS" },
     { name = "space", bits = "u64::MAX" },
@@ -397,7 +403,7 @@ object = "memory_region"
 name = "SPLIT"
 number = 3
 rights = ["WRITE"]
-refusals = ["OutOfMemory", "NotPermitted"]
+refusals = ["OutOfMemory"]
 arguments = [
     { name = "pages", bits = "u64::MAX" },
 ]
@@ -454,7 +460,7 @@ name = "MAP"
 number = 0
 blank_line_before = false
 rights = ["READ", "WRITE"]
-refusals = ["BadPointer", "OutOfMemory", "NotPermitted"]
+refusals = ["BadPointer", "OutOfMemory", "NotPermitted", "NoSuchSlot", "WrongObject"]
 arguments = [
     { name = "virtual_address", bits = "u64::MAX" },
     { name = "writable", bits = "1", type = "bool" },
@@ -498,7 +504,7 @@ object = "page_frame"
 name = "SLICE"
 number = 2
 rights = ["GRANT"]
-refusals = ["BadPointer"]
+refusals = ["BadPointer", "OutOfMemory"]
 arguments = [
     { name = "first", bits = "u64::MAX" },
     { name = "count", bits = "u64::MAX" },
@@ -520,7 +526,7 @@ name = "MAP_INTO"
 number = 0
 blank_line_before = false
 rights = ["WRITE"]
-refusals = ["OutOfMemory", "NotPermitted"]
+refusals = ["OutOfMemory", "NotPermitted", "NoSuchSlot", "WrongObject", "BadPointer"]
 arguments = [
     { name = "virtual_address", bits = "u64::MAX" },
     { name = "frame_slot", bits = "u64::MAX" },
@@ -614,7 +620,7 @@ object = "address_space"
 name = "WAIT"
 number = 3
 rights = ["READ"]
-refusals = ["BadMethod", "WrongObject", "NotPermitted", "BadPointer", "Gone"]
+refusals = ["BadMethod", "WrongObject", "BadPointer", "Gone"]
 arguments = [
     { name = "virtual_address", bits = "u64::MAX" },
     { name = "flags", bits = "address_wait::PRIVATE | address_wait::WIDTH_MASK" },
@@ -639,7 +645,7 @@ object = "address_space"
 name = "WAKE"
 number = 4
 rights = ["READ"]
-refusals = ["BadMethod", "WrongObject", "NotPermitted", "BadPointer"]
+refusals = ["BadMethod", "WrongObject", "BadPointer"]
 arguments = [
     { name = "virtual_address", bits = "u64::MAX" },
     { name = "flags", bits = "address_wait::PRIVATE | address_wait::WIDTH_MASK" },
@@ -659,7 +665,7 @@ name = "CONFIGURE"
 number = 0
 blank_line_before = false
 rights = ["WRITE"]
-refusals = ["WrongObject", "OutOfMemory", "BadPointer"]
+refusals = ["WrongObject", "OutOfMemory", "BadPointer", "NoSuchSlot", "NotPermitted", "Gone"]
 arguments = [
     { name = "entry", bits = "u64::MAX" },
     { name = "user_stack_pointer", bits = "u64::MAX" },
@@ -684,7 +690,7 @@ object = "thread_control_block"
 name = "CAPABILITY_INSERT"
 number = 1
 rights = ["WRITE", "GRANT"]
-refusals = ["OutOfMemory"]
+refusals = ["OutOfMemory", "NoSuchSlot", "WrongObject", "NotPermitted"]
 arguments = [
     { name = "capability_slot", bits = "u64::MAX" },
     { name = "rights", bits = "rights::ALL" },
@@ -709,7 +715,7 @@ object = "thread_control_block"
 name = "START"
 number = 2
 rights = ["WRITE"]
-refusals = []
+refusals = ["NoSuchSlot", "WrongObject", "NotPermitted", "OutOfMemory", "Gone"]
 arguments = [
     { name = "argument_0", bits = "u64::MAX" },
     { name = "argument_1", bits = "u64::MAX" },
@@ -730,7 +736,7 @@ object = "thread_control_block"
 name = "SET_THREAD_POINTER"
 number = 3
 rights = ["WRITE"]
-refusals = ["WrongObject", "BadPointer"]
+refusals = ["WrongObject", "BadPointer", "NoSuchSlot"]
 arguments = [
     { name = "value", bits = "u64::MAX" },
 ]
@@ -752,7 +758,7 @@ object = "thread_control_block"
 name = "SUSPEND"
 number = 4
 rights = ["WRITE"]
-refusals = ["WrongObject", "Gone"]
+refusals = ["WrongObject", "Gone", "NoSuchSlot"]
 arguments = []
 answers = []
 doc = '''
@@ -771,7 +777,7 @@ object = "thread_control_block"
 name = "RESUME"
 number = 5
 rights = ["WRITE"]
-refusals = ["WrongObject", "Gone"]
+refusals = ["WrongObject", "Gone", "NoSuchSlot"]
 arguments = []
 answers = []
 doc = '''
@@ -840,7 +846,7 @@ object = "notification"
 name = "POLL"
 number = 2
 rights = ["READ"]
-refusals = []
+refusals = ["Gone"]
 arguments = []
 answers = ["word"]
 doc = '''
@@ -853,7 +859,7 @@ object = "notification"
 name = "BIND"
 number = 3
 rights = ["WRITE"]
-refusals = ["NotPermitted", "WrongObject", "Gone"]
+refusals = ["NotPermitted", "WrongObject", "Gone", "NoSuchSlot"]
 arguments = [
     { name = "thread_control_block_slot", bits = "u64::MAX" },
 ]
@@ -886,7 +892,7 @@ name = "ARM"
 number = 0
 blank_line_before = false
 rights = ["WRITE"]
-refusals = ["WrongObject", "NotPermitted"]
+refusals = ["WrongObject", "NotPermitted", "NoSuchSlot", "Gone"]
 arguments = [
     { name = "deadline", bits = "u64::MAX" },
     { name = "notification_slot", bits = "u64::MAX" },
@@ -910,7 +916,7 @@ object = "timer"
 name = "CANCEL"
 number = 1
 rights = ["WRITE"]
-refusals = []
+refusals = ["Gone"]
 arguments = []
 answers = ["was_armed"]
 doc = '''
@@ -927,7 +933,7 @@ name = "WAIT"
 number = 0
 blank_line_before = false
 rights = []
-refusals = []
+refusals = ["NotPermitted", "WrongObject"]
 arguments = []
 answers = ["fired"]
 doc = '''
@@ -941,7 +947,7 @@ object = "interrupt"
 name = "ACKNOWLEDGE"
 number = 1
 rights = []
-refusals = []
+refusals = ["NotPermitted"]
 arguments = []
 answers = []
 doc = '''
@@ -955,7 +961,7 @@ name = "READ_REGISTER"
 number = 0
 blank_line_before = false
 rights = []
-refusals = ["WrongObject"]
+refusals = ["WrongObject", "NotPermitted"]
 arguments = [
     { name = "offset", bits = "u64::MAX" },
 ]
@@ -973,7 +979,7 @@ name = "WRITE_REGISTER"
 number = 1
 blank_line_before = false
 rights = []
-refusals = ["WrongObject"]
+refusals = ["WrongObject", "NotPermitted"]
 arguments = [
     { name = "offset", bits = "u64::MAX" },
     { name = "value", bits = "u64::MAX" },
@@ -991,7 +997,7 @@ name = "SETUP_QUEUE"
 number = 2
 blank_line_before = false
 rights = []
-refusals = ["WrongObject"]
+refusals = ["WrongObject", "NotPermitted"]
 arguments = [
     { name = "entries", bits = "u64::MAX" },
     { name = "queue", bits = "u64::MAX" },
@@ -1011,7 +1017,7 @@ name = "NOTIFY"
 number = 3
 blank_line_before = false
 rights = []
-refusals = ["DeviceRefused"]
+refusals = ["DeviceRefused", "WrongObject", "NotPermitted"]
 arguments = [
     { name = "queue", bits = "u64::MAX" },
 ]
