@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, MAP_INTO, va, frame_slot, writable)` -> 0. Map the frame in `frame_slot` into THIS
 /// address space at `va`, read-only or read/write. Needs `WRITE` on the address-space capability;
 /// the frame capability needs `READ` for a read-only mapping, `WRITE` for a writable one, the
@@ -55,3 +57,4 @@ pub const WAIT: u64 = 3;
 /// Refuses what [`WAIT`] refuses, except that the word need not be mapped: a wake reads no memory.
 /// *(Name and number provisional.)*
 pub const WAKE: u64 = 4;
+// End of the part generated from method-table.toml.

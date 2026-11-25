@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, MAP, va, _, _)` -> 0. Retype one page out of the untyped and map it, writable,
 /// at `va` in the caller's own address space. The page and any page tables it needs both come
 /// from the untyped; the kernel allocates nothing. Returns `OutOfMemory` when the untyped is
@@ -52,3 +54,4 @@ pub const DESTROY: u64 = 4;
 /// - **A subtree record walks the whole region table under the region lock, interrupts masked**:
 ///   up to 62 µs a call, repeatable by any `ENUMERATE` holder; accepted.
 pub const USAGE: u64 = 5;
+// End of the part generated from method-table.toml.

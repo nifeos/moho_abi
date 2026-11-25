@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, CONFIGURE, entry, user_sp, address_space_slot)` -> the thread's current-CPU page
 /// address, never negative (zero if none could be given). Bind the space in `address_space_slot`
 /// and set the EL0 entry and user stack of an embryo TCB. Needs `WRITE` on both capabilities.
@@ -57,3 +59,4 @@ pub const SUSPEND: u64 = 4;
 /// Resuming a thread that is not suspended is 0 and changes nothing. An embryo is `WrongObject`; a thread that
 /// has exited or died is `Gone`.
 pub const RESUME: u64 = 5;
+// End of the part generated from method-table.toml.

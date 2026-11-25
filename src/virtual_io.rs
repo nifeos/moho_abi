@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, READ_REGISTER, off, _, _)` -> register value. Reads are DMA-safe, so any register
 /// in the device's own slot; an offset outside the slot, or not word-aligned, is `WrongObject`. The
 /// kernel offers only modern (version 2) devices on either bus, so the `Version` register always
@@ -18,6 +20,7 @@ pub const SETUP_QUEUE: u64 = 2;
 /// `queue` selects the virtqueue, as for `SETUP_QUEUE`; each queue keeps its own validated
 /// high-water mark, so receive and transmit submits never interfere.
 pub const NOTIFY: u64 = 3;
+// End of the part generated from method-table.toml.
 
 /// **Where a boot virtio device's DMA region says where it is**: the byte offset, inside the
 /// region's first page, at which the kernel writes the region's own physical base as a

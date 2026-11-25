@@ -1,3 +1,5 @@
+// Generated from method-table.toml by tests/method_table: edit the table, then run
+// `MOHO_ABI_REGENERATE=1 cargo test --test method_table`.
 /// `invoke(capability, REBOOT, _, _, _)`. **On success it does not return**: the kernel asks the firmware
 /// for a cold reset (PSCI `SYSTEM_RESET` on aarch64, the SBI's system reset (SRST) extension,
 /// type 1, on riscv64, and on `x86_64` the reset register that the firmware's Advanced
@@ -9,6 +11,7 @@
 /// and waits for the reply first. A firmware that accepts the call and hangs looks the same as a
 /// slow reset from inside the machine.
 pub const REBOOT: u64 = 0;
+// End of the part generated from method-table.toml.
 
 /// **Why the machine did not restart, from PSCI**:
 /// `SYSTEM_RESET`'s return (Arm document `DEN0022`) as the error `REBOOT` answers. `NOT_SUPPORTED` (-1) is

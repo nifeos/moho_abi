@@ -384,6 +384,7 @@ fn every_public_number_is_pinned() {
         "reply",
         "rights",
         "survey",
+        "system_call",
         "thread_control_block",
         "timer",
         "uart",
