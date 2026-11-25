@@ -195,8 +195,8 @@ macro_rules! pinned {
 /// a check that format values move with their constants catches.
 ///
 /// A new public number joins this list in the change that defines it. The list is exhaustive
-/// over every `pub const` of type `u64` in this crate's modules; the enums and the object
-/// modules that are types rather than numbers are pinned beside them
+/// over every `pub const` of type `u64`, `u32` or `u16` in this crate's modules; the enums and
+/// the object modules that are types rather than numbers are pinned beside them
 /// (`every_error_is_pinned_to_its_number`, `cycle_counter`'s own tests).
 #[test]
 fn the_system_call_numbers_and_the_first_object_modules_are_pinned() {
@@ -315,6 +315,12 @@ fn the_last_object_modules_are_pinned() {
         crate::virtual_io::SETUP_QUEUE => 2,
         crate::virtual_io::NOTIFY => 3,
         crate::virtual_io::DIRECT_MEMORY_ACCESS_REGION_BASE_PHYSICAL_ADDRESS_WORD_OFFSET => 4088,
+        crate::virtual_io::QUEUE_ENTRIES => 8,
+        crate::virtual_io::DESCRIPTOR_TABLE_OFFSET_BYTES => 0x000,
+        crate::virtual_io::AVAILABLE_RING_OFFSET_BYTES => 0x080,
+        crate::virtual_io::USED_RING_OFFSET_BYTES => 0x100,
+        crate::virtual_io::RINGS_END_OFFSET_BYTES => 0x146,
+        crate::virtual_io::RING_BLOCK_BYTES => 0x200,
     }
 }
 
@@ -427,7 +433,7 @@ fn every_public_number_is_pinned() {
             if name.starts_with("fn ") {
                 continue;
             }
-            if !(kind.starts_with("u64") || kind.starts_with("u32")) {
+            if !(kind.starts_with("u64") || kind.starts_with("u32") || kind.starts_with("u16")) {
                 continue;
             }
             counted += 1;
